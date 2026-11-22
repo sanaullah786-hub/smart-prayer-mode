@@ -141,7 +141,7 @@ class BootReceiver : BroadcastReceiver() {
             Intent.ACTION_BOOT_COMPLETED,
             Intent.ACTION_MY_PACKAGE_REPLACED,
             Intent.ACTION_TIMEZONE_CHANGED,
-            Intent.ACTION_TIME_SET -> runAsync {
+            Intent.ACTION_TIME_CHANGED -> runAsync {
                 PrayerScheduler.scheduleNext(context)
                 if (intent.action == Intent.ACTION_BOOT_COMPLETED ||
                     intent.action == Intent.ACTION_MY_PACKAGE_REPLACED
