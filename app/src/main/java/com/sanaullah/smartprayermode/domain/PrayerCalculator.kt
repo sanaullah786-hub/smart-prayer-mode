@@ -10,6 +10,7 @@ import com.sanaullah.smartprayermode.data.SettingsEntity
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 
 enum class Prayer(val label: String, val obligatory: Boolean) {
     FAJR("Fajr", true),
@@ -47,6 +48,9 @@ object PrayerCalculator {
         MethodInfo("SINGAPORE", "Singapore"),
     )
 
+    /** Adhan already rounds to the minute but leaves a jittering millisecond; drop it so times are stable. */
+    private fun minute(date: java.util.Date): Instant = date.toInstant().truncatedTo(ChronoUnit.MINUTES)
+
     fun methodLabel(id: String): String = methods.firstOrNull { it.id == id }?.label ?: id
 
     fun zoneOf(s: SettingsEntity): ZoneId = try {
@@ -74,12 +78,12 @@ object PrayerCalculator {
         return PrayerDay(
             date,
             listOf(
-                PrayerTime(Prayer.FAJR, times.fajr.toInstant()),
-                PrayerTime(Prayer.SUNRISE, times.sunrise.toInstant()),
-                PrayerTime(Prayer.DHUHR, times.dhuhr.toInstant()),
-                PrayerTime(Prayer.ASR, times.asr.toInstant()),
-                PrayerTime(Prayer.MAGHRIB, times.maghrib.toInstant()),
-                PrayerTime(Prayer.ISHA, times.isha.toInstant()),
+                PrayerTime(Prayer.FAJR, minute(times.fajr)),
+                PrayerTime(Prayer.SUNRISE, minute(times.sunrise)),
+                PrayerTime(Prayer.DHUHR, minute(times.dhuhr)),
+                PrayerTime(Prayer.ASR, minute(times.asr)),
+                PrayerTime(Prayer.MAGHRIB, minute(times.maghrib)),
+                PrayerTime(Prayer.ISHA, minute(times.isha)),
             )
         )
     }
