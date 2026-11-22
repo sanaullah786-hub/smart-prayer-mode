@@ -88,8 +88,8 @@ class CoreLogicTest {
         val date = LocalDate.of(2026, 11, 22)
         val fajr = PrayerCalculator.calculate(makkah, date).of(Prayer.FAJR)
         val next = PrayerCalculator.nextObligatory(makkah, fajr.minusSeconds(60))
-        assertEquals(Prayer.FAJR, next!!.prayer)
-        assertEquals(fajr, next.time)
+        assertEquals("next=$next fajr=$fajr", Prayer.FAJR, next!!.prayer)
+        assertEquals("next=$next fajr=$fajr", fajr, next.time)
     }
 
     @Test
@@ -136,9 +136,10 @@ class CoreLogicTest {
 
     @Test
     fun qiblaBearingsAreSensible() {
-        assertTrue(QiblaUtil.bearing(24.8607, 67.0011) in 255.0..275.0) // Karachi ~ west
-        assertTrue(QiblaUtil.bearing(51.5074, -0.1278) in 110.0..125.0) // London ~ south-east
-        assertTrue(QiblaUtil.distanceKm(24.8607, 67.0011) in 3000.0..4500.0)
+        assertTrue("karachi=${QiblaUtil.bearing(24.8607, 67.0011)}", QiblaUtil.bearing(24.8607, 67.0011) in 255.0..275.0) // Karachi ~ west
+        assertTrue("london=${QiblaUtil.bearing(51.5074, -0.1278)}", QiblaUtil.bearing(51.5074, -0.1278) in 110.0..125.0) // London ~ south-east
+        val km = QiblaUtil.distanceKm(24.8607, 67.0011)
+        assertTrue("km=$km", km in 2500.0..3200.0)
     }
 
     @Test
