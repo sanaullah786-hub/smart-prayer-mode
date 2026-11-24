@@ -35,6 +35,7 @@ import com.sanaullah.smartprayermode.ui.screens.HomeScreen
 import com.sanaullah.smartprayermode.ui.screens.LocationSetupScreen
 import com.sanaullah.smartprayermode.ui.screens.PermissionSetupScreen
 import com.sanaullah.smartprayermode.ui.screens.PrayerTimesScreen
+import com.sanaullah.smartprayermode.ui.screens.NotificationSettingsScreen
 import com.sanaullah.smartprayermode.ui.screens.QiblaScreen
 import com.sanaullah.smartprayermode.ui.screens.RamadanScreen
 import com.sanaullah.smartprayermode.ui.screens.SettingsScreen
@@ -61,6 +62,7 @@ private object Route {
     const val SETTINGS = "settings"
     const val ADVANCED = "advanced"
     const val DEVICE_OWNER = "device_owner"
+    const val NOTIFICATIONS = "notifications"
     // Onboarding variants that finish by going to Home
     const val SETUP_PERMISSIONS = "setup_permissions"
     const val SETUP_LOCATION = "setup_location"
@@ -162,7 +164,11 @@ fun AppNav(vm: AppViewModel) {
                         onOpenAdvanced = { nav.navigate(Route.ADVANCED) },
                         onOpenRamadan = { nav.navigate(Route.RAMADAN) },
                         onOpenTimes = { nav.navigate(Route.TIMES) },
+                        onOpenNotifications = { nav.navigate(Route.NOTIFICATIONS) },
                     )
+                }
+                composable(Route.NOTIFICATIONS) {
+                    NotificationSettingsScreen(vm, onBack = { nav.popBackStack() }, onOpenAzan = { nav.navigate(Route.AZAN) })
                 }
                 composable(Route.ADVANCED) {
                     AdvancedSettingsScreen(

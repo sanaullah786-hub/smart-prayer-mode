@@ -77,7 +77,7 @@ object PrayerSessionManager {
 
         if (s.dndDuringPrayer) enableDnd(app)
         DeviceOwnerHelper.applyLockTaskPolicy(app)
-        PrayerNotifications.postPrayerTime(app, displayName, auto = true, endMillis = session.endMillis)
+        PrayerNotifications.postPrayerTime(app, displayName, auto = true, endMillis = session.endMillis, lockScreen = s.notifOnLockScreen)
         launchActivity(app)
     }
 

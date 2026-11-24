@@ -15,10 +15,11 @@ it is a normal full-screen prayer screen. No ads, no tracking, no network access
 |------|--------------|
 | Prayer times | Fajr, Sunrise, Dhuhr, Asr, Maghrib, Isha via the [Adhan](https://github.com/batoulapps/adhan-java) library. 10 calculation methods, Hanafi / Shafi Asr, per-prayer manual adjustments, DST-safe (java.time). |
 | Location | One-shot GPS/network fix with city + country lookup, offline manual city list, timezone handling. Never tracked continuously; refreshed only on setup, manual refresh, or at launch when older than 12 h. Permission denial falls back to manual selection. |
-| Azan | Madinah (default), Makkah, Egyptian, Turkish and Custom file. Play/pause/stop, preview, test, volume, ON/OFF, audio-focus handling (pause on calls, duck, stop on loss), resources released on stop. **Audio files are not bundled — see below.** |
+| Azan | Madinah (default), Makkah, Egyptian, Turkish and Custom file. Play/pause/stop, preview, test, volume, ON/OFF, audio-focus handling (pause on calls, duck, stop on loss), resources released on stop. **No audio is bundled (none with a clear licence was found); add your own licensed file to any slot, and Fajr can use a different Azan.** |
 | Prayer Mode | At prayer time: Azan + full-screen dark-green/gold screen with prayer name, clock, countdown, greeting, **Emergency Call** and a hold-to-exit button. Ends automatically after the configured duration (5/10/15/20/30/custom). |
 | Device lock | Lock Task (kiosk) mode when the app is Device Owner; dialer allowlisted for emergencies. Otherwise a normal full-screen fallback. |
 | Extras | Qibla compass (rotation-vector sensor, declination-corrected), Hijri (Umm al-Qura) calendar, Ramadan countdown, Sehri/Iftar table, notifications, 20 s Prayer Mode test button. |
+| Notifications | Master switch, per-prayer switches (Fajr/Dhuhr/Asr/Maghrib/Isha), reminder 5-30 min before each prayer, lock-screen privacy, vibration, permission status, shortcuts to Android's channel settings, test button. |
 | Background | `AlarmManager` exact alarms (falls back to `setAlarmClock`), one alarm only (no duplicates), boot / time-zone / time-change receivers, a short-lived media foreground service only while the Azan plays. No always-on service. |
 | Storage | Room database (settings, location, method, school, Azan, duration, adjustments). `allowBackup=false`. |
 

@@ -128,7 +128,7 @@ fun WelcomeScreen(onContinue: () -> Unit) {
 }
 
 @Composable
-private fun rememberResumeTick(): Int {
+internal fun rememberResumeTick(): Int {
     var tick by remember { mutableIntStateOf(0) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     DisposableEffect(lifecycle) {

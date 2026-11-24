@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.NightsStay
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material3.AlertDialog
@@ -73,7 +74,7 @@ private val dialogColors
     )
 
 @Composable
-private fun <T> ChoiceDialog(
+internal fun <T> ChoiceDialog(
     title: String,
     options: List<Pair<T, String>>,
     selected: T,
@@ -112,6 +113,7 @@ fun SettingsScreen(
     onOpenAdvanced: () -> Unit,
     onOpenRamadan: () -> Unit,
     onOpenTimes: () -> Unit,
+    onOpenNotifications: () -> Unit,
 ) {
     val settings by vm.settings.collectAsStateWithLifecycle()
     val ctx = LocalContext.current
@@ -162,6 +164,11 @@ fun SettingsScreen(
 
         SectionLabel("Azan & notifications")
         GoldCard {
+            NavRow(
+                "Notification settings",
+                if (!s.notifEnabled) "Off" else if (s.reminderMinutes > 0) "On · reminder ${s.reminderMinutes} min before" else "On · no reminder",
+                Icons.Filled.Notifications, onOpenNotifications
+            )
             SwitchRow(
                 "Azan audio", "Play the Azan at prayer time",
                 s.azanEnabled, { v -> vm.update { it.copy(azanEnabled = v) } },

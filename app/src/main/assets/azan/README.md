@@ -17,6 +17,9 @@ Place files in `app/src/main/assets/azan/`. Until a file exists, that Azan is sh
 unavailable in the app, its preview button is disabled, and at prayer time the app plays the
 device notification tone instead (it is never described as an Azan).
 
+You can also add a file **inside the app** (Settings -> Azan voice -> "Add my licensed file" on any
+Azan), with no rebuild needed. A file added in the app is used instead of the bundled asset.
+
 Before adding a file:
 
 1. Obtain it under a licence that allows redistribution inside an app (public domain, CC0,

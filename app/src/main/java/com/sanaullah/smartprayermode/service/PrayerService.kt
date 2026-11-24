@@ -68,20 +68,28 @@ class PrayerService : Service() {
                 SettingsEntity.defaults()
             }
 
-            if (s.vibration) vibrate()
+            // Per-prayer alert switch (notification + Azan + vibration). Prayer Mode has its own switch.
+            val alert = prayer == null || (s.notifEnabled && s.notifFor(prayer))
+
+            if (s.vibration && alert) vibrate()
 
             if (s.autoPrayerMode) {
                 val minutes = s.prayerDurationMinutes
                     .coerceIn(SettingsEntity.MIN_DURATION, SettingsEntity.MAX_DURATION)
                 val duration = if (durationOverride > 0) durationOverride else minutes * 60_000L
                 PrayerSessionManager.begin(applicationContext, s, rawName, displayName, duration)
-            } else {
-                PrayerNotifications.postPrayerTime(applicationContext, displayName, auto = false)
+            } else if (alert) {
+                PrayerNotifications.postPrayerTime(
+                    applicationContext, displayName, auto = false, lockScreen = s.notifOnLockScreen
+                )
             }
 
-            if (s.azanEnabled && playAzan) {
+            if (s.azanEnabled && playAzan && alert) {
+                // Fajr can use its own Azan; otherwise the selected one.
+                val name = if (prayer == Prayer.FAJR && s.fajrAzanSource.isNotBlank()) s.fajrAzanSource else s.azanSource
+                val source = AzanSource.fromName(name)
                 app.azanPlayer.play(
-                    AzanSource.fromName(s.azanSource), s.customAzanUri, s.azanVolume,
+                    source, s.azanUri(source.name), s.azanVolume,
                     useFallbackTone = true
                 ) { stopSelf() }
             } else {

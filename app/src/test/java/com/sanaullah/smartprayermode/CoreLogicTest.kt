@@ -8,6 +8,7 @@ import com.sanaullah.smartprayermode.domain.QiblaUtil
 import com.sanaullah.smartprayermode.util.Fmt
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import java.time.Duration
 import java.time.LocalDate
@@ -161,5 +162,22 @@ class CoreLogicTest {
         assertEquals(15, d.prayerDurationMinutes)
         assertEquals("SHAFI", d.madhab)
         assertTrue(!d.locationSet)
+    }
+
+    @Test
+    fun notificationFlagsArePerPrayer() {
+        val s = SettingsEntity.defaults().copy(notifDhuhr = false)
+        assertTrue(s.notifFor(Prayer.FAJR))
+        assertTrue(!s.notifFor(Prayer.DHUHR))
+        assertTrue(!s.notifFor(Prayer.SUNRISE))
+        assertEquals(10, s.reminderMinutes)
+    }
+
+    @Test
+    fun userAzanFileIsPerSlot() {
+        val s = SettingsEntity.defaults().copy(userUriMakkah = "content://x/makkah")
+        assertEquals("content://x/makkah", s.azanUri("MAKKAH"))
+        assertNull(s.azanUri("MADINAH"))
+        assertNull(s.azanUri("CUSTOM"))
     }
 }

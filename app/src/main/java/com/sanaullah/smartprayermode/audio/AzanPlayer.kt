@@ -12,10 +12,10 @@ import android.os.Looper
 import android.util.Log
 
 enum class AzanSource(val label: String, val assetPath: String?, val note: String) {
-    MADINAH("Madinah (Masjid an-Nabawi style)", "azan/madinah.mp3", "Licensed recording must be supplied"),
-    MAKKAH("Makkah (Masjid al-Haram style)", "azan/makkah.mp3", "Licensed recording must be supplied"),
-    EGYPTIAN("Egyptian", "azan/egyptian.mp3", "Licensed recording must be supplied"),
-    TURKISH("Turkish", "azan/turkish.mp3", "Licensed recording must be supplied"),
+    MADINAH("Madinah (Masjid an-Nabawi style)", "azan/madinah.mp3", "No audio included – add your licensed file"),
+    MAKKAH("Makkah (Masjid al-Haram style)", "azan/makkah.mp3", "No audio included – add your licensed file"),
+    EGYPTIAN("Egyptian", "azan/egyptian.mp3", "No audio included – add your licensed file"),
+    TURKISH("Turkish", "azan/turkish.mp3", "No audio included – add your licensed file"),
     CUSTOM("Custom (your own audio file)", null, "Choose an audio file from your device");
 
     companion object {
@@ -25,12 +25,11 @@ enum class AzanSource(val label: String, val assetPath: String?, val note: Strin
 
 object AzanLibrary {
     /** True when the bundled asset exists (or, for CUSTOM, when a file has been chosen). */
-    fun isAvailable(context: Context, source: AzanSource, customUri: String?): Boolean =
-        if (source == AzanSource.CUSTOM) {
-            !customUri.isNullOrBlank()
-        } else {
-            runCatching { context.assets.openFd(source.assetPath!!).close() }.isSuccess
-        }
+    fun isAvailable(context: Context, source: AzanSource, customUri: String?): Boolean {
+        if (!customUri.isNullOrBlank()) return true // a user-supplied file always wins
+        val path = source.assetPath ?: return false
+        return runCatching { context.assets.openFd(path).close() }.isSuccess
+    }
 }
 
 /**
@@ -121,7 +120,7 @@ class AzanPlayer(context: Context) {
             val msg = if (source == AzanSource.CUSTOM) {
                 "No custom audio file selected."
             } else {
-                "Azan file for \"${source.label}\" has not been added (see assets/azan/README.md)."
+                "No audio for \"${source.label}\" yet. Add your licensed file in Azan settings."
             }
             _ui.value = UiState(message = msg)
             if (useFallbackTone) playFallbackTone() else finish()
@@ -138,7 +137,7 @@ class AzanPlayer(context: Context) {
         player = mp
         try {
             mp.setAudioAttributes(attributes)
-            if (source == AzanSource.CUSTOM) {
+            if (!customUri.isNullOrBlank()) {
                 mp.setDataSource(appContext, Uri.parse(customUri))
             } else {
                 appContext.assets.openFd(source.assetPath!!).use {

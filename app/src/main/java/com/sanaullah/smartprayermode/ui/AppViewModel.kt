@@ -20,6 +20,7 @@ import com.sanaullah.smartprayermode.data.SettingsRepository
 import com.sanaullah.smartprayermode.location.City
 import com.sanaullah.smartprayermode.location.LocationHelper
 import com.sanaullah.smartprayermode.scheduler.PrayerScheduler
+import com.sanaullah.smartprayermode.service.PrayerNotifications
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -132,17 +133,42 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
 
     fun previewAzan(source: AzanSource) {
         val s = settings.value ?: return
-        azanPlayer.play(source, s.customAzanUri, s.azanVolume)
+        azanPlayer.play(source, s.azanUri(source.name), s.azanVolume)
     }
 
     fun playSelectedAzan() {
         val s = settings.value ?: return
-        azanPlayer.play(AzanSource.fromName(s.azanSource), s.customAzanUri, s.azanVolume)
+        val src = AzanSource.fromName(s.azanSource)
+        azanPlayer.play(src, s.azanUri(src.name), s.azanVolume)
     }
 
     fun togglePause() = azanPlayer.togglePause()
     fun stopAzan() = azanPlayer.stop()
     fun setLiveVolume(v: Float) = azanPlayer.setVolume(v)
+
+    /** Stores (or clears, when [uri] is null) the user-supplied audio file for an Azan slot. */
+    fun setAzanFile(source: AzanSource, uri: Uri?, select: Boolean = true) {
+        val value = uri?.toString()
+        update {
+            var n = when (source) {
+                AzanSource.MADINAH -> it.copy(userUriMadinah = value)
+                AzanSource.MAKKAH -> it.copy(userUriMakkah = value)
+                AzanSource.EGYPTIAN -> it.copy(userUriEgyptian = value)
+                AzanSource.TURKISH -> it.copy(userUriTurkish = value)
+                AzanSource.CUSTOM -> it.copy(customAzanUri = value)
+            }
+            if (select && value != null) n = n.copy(azanSource = source.name)
+            n
+        }
+    }
+
+    // ---- Notifications ----------------------------------------------------------------
+
+    fun sendTestNotifications() {
+        val s = settings.value ?: return
+        PrayerNotifications.postReminder(app, "Dhuhr", System.currentTimeMillis() + 10 * 60_000L, s.notifOnLockScreen)
+        PrayerNotifications.postPrayerTime(app, "Dhuhr", auto = false, lockScreen = s.notifOnLockScreen)
+    }
 
     override fun onCleared() {
         azanPlayer.stop() // release audio resources when the app UI goes away

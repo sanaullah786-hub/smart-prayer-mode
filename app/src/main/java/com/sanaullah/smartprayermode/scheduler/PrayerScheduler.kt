@@ -10,8 +10,11 @@ import android.util.Log
 import androidx.core.content.ContextCompat
 import com.sanaullah.smartprayermode.MainActivity
 import com.sanaullah.smartprayermode.data.SettingsRepository
+import com.sanaullah.smartprayermode.data.SettingsEntity
+import com.sanaullah.smartprayermode.domain.Prayer
 import com.sanaullah.smartprayermode.domain.PrayerCalculator
 import com.sanaullah.smartprayermode.domain.PrayerTime
+import com.sanaullah.smartprayermode.service.PrayerNotifications
 import com.sanaullah.smartprayermode.service.PrayerService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,12 +31,14 @@ import java.time.Instant
 object PrayerScheduler {
     const val ACTION_PRAYER = "com.sanaullah.smartprayermode.action.PRAYER_TIME"
     const val ACTION_END = "com.sanaullah.smartprayermode.action.PRAYER_END"
+    const val ACTION_REMINDER = "com.sanaullah.smartprayermode.action.PRAYER_REMINDER"
     const val EXTRA_PRAYER = "extra_prayer"
     const val EXTRA_TIME = "extra_time"
 
     private const val RC_PRAYER = 1001
     private const val RC_END = 1002
     private const val RC_SHOW = 1003
+    private const val RC_REMIND = 1004
     private const val TAG = "PrayerScheduler"
 
     private fun alarmManager(ctx: Context) = ctx.getSystemService(AlarmManager::class.java)
@@ -60,7 +65,24 @@ object PrayerScheduler {
             .putExtra(EXTRA_PRAYER, next.prayer.name)
             .putExtra(EXTRA_TIME, next.time.toEpochMilli())
         setAlarm(app, next.time.toEpochMilli(), pending(app, RC_PRAYER, intent))
+        scheduleReminder(app, s, next)
         return next
+    }
+
+    /** One reminder alarm for the next prayer, N minutes before it (replaced, never duplicated). */
+    private fun scheduleReminder(ctx: Context, s: SettingsEntity, next: PrayerTime) {
+        val intent = receiverIntent(ctx, ACTION_REMINDER)
+            .putExtra(EXTRA_PRAYER, next.prayer.name)
+            .putExtra(EXTRA_TIME, next.time.toEpochMilli())
+        val pi = pending(ctx, RC_REMIND, intent)
+        val at = next.time.toEpochMilli() - s.reminderMinutes * 60_000L
+        if (!s.notifEnabled || s.reminderMinutes <= 0 || !s.notifFor(next.prayer) ||
+            at <= System.currentTimeMillis()
+        ) {
+            alarmManager(ctx).cancel(pi)
+            return
+        }
+        setAlarm(ctx, at, pi)
     }
 
     fun scheduleEnd(ctx: Context, endMillis: Long) {
@@ -130,6 +152,16 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                 runAsync { PrayerScheduler.scheduleNext(context, after) }
             }
             PrayerScheduler.ACTION_END -> PrayerSessionManager.end(context)
+            PrayerScheduler.ACTION_REMINDER -> runAsync {
+                val s = SettingsRepository.get(context).current()
+                val prayer = Prayer.fromName(intent.getStringExtra(PrayerScheduler.EXTRA_PRAYER))
+                    ?: return@runAsync
+                if (!s.notifEnabled || !s.notifFor(prayer)) return@runAsync
+                val time = intent.getLongExtra(PrayerScheduler.EXTRA_TIME, 0L)
+                if (time > System.currentTimeMillis()) {
+                    PrayerNotifications.postReminder(context, prayer.label, time, s.notifOnLockScreen)
+                }
+            }
         }
     }
 }

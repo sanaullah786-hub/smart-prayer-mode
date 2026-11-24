@@ -10,6 +10,9 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
+import com.sanaullah.smartprayermode.domain.Prayer
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
@@ -56,6 +59,23 @@ data class SettingsEntity(
     val timezoneId: String = "",
     val locationIsAuto: Boolean = false,
     val locationUpdatedAt: Long = 0L,
+
+    // Notifications
+    val notifEnabled: Boolean = true,
+    val notifFajr: Boolean = true,
+    val notifDhuhr: Boolean = true,
+    val notifAsr: Boolean = true,
+    val notifMaghrib: Boolean = true,
+    val notifIsha: Boolean = true,
+    val reminderMinutes: Int = 10,
+    val notifOnLockScreen: Boolean = true,
+
+    // Azan extras: separate Fajr Azan and user-supplied (licensed) files per Azan slot
+    val fajrAzanSource: String = "",
+    val userUriMadinah: String? = null,
+    val userUriMakkah: String? = null,
+    val userUriEgyptian: String? = null,
+    val userUriTurkish: String? = null,
 ) {
     val locationLabel: String
         get() = when {
@@ -64,6 +84,26 @@ data class SettingsEntity(
             cityName.isNotBlank() -> cityName
             else -> "%.2f, %.2f".format(latitude, longitude)
         }
+
+    /** Whether the prayer-time alert (notification + Azan) and reminder are on for [p]. */
+    fun notifFor(p: Prayer): Boolean = when (p) {
+        Prayer.FAJR -> notifFajr
+        Prayer.DHUHR -> notifDhuhr
+        Prayer.ASR -> notifAsr
+        Prayer.MAGHRIB -> notifMaghrib
+        Prayer.ISHA -> notifIsha
+        Prayer.SUNRISE -> false
+    }
+
+    /** The user-supplied audio file for an Azan slot (by AzanSource name), or null. */
+    fun azanUri(source: String): String? = when (source) {
+        "MADINAH" -> userUriMadinah
+        "MAKKAH" -> userUriMakkah
+        "EGYPTIAN" -> userUriEgyptian
+        "TURKISH" -> userUriTurkish
+        "CUSTOM" -> customAzanUri
+        else -> null
+    }
 
     companion object {
         const val MIN_DURATION = 1
@@ -84,7 +124,27 @@ interface SettingsDao {
     suspend fun upsert(entity: SettingsEntity)
 }
 
-@Database(entities = [SettingsEntity::class], version = 1, exportSchema = false)
+private val MIGRATION_1_2 = object : Migration(1, 2) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        listOf(
+            "notifEnabled INTEGER NOT NULL DEFAULT 1",
+            "notifFajr INTEGER NOT NULL DEFAULT 1",
+            "notifDhuhr INTEGER NOT NULL DEFAULT 1",
+            "notifAsr INTEGER NOT NULL DEFAULT 1",
+            "notifMaghrib INTEGER NOT NULL DEFAULT 1",
+            "notifIsha INTEGER NOT NULL DEFAULT 1",
+            "reminderMinutes INTEGER NOT NULL DEFAULT 10",
+            "notifOnLockScreen INTEGER NOT NULL DEFAULT 1",
+            "fajrAzanSource TEXT NOT NULL DEFAULT ''",
+            "userUriMadinah TEXT",
+            "userUriMakkah TEXT",
+            "userUriEgyptian TEXT",
+            "userUriTurkish TEXT",
+        ).forEach { db.execSQL("ALTER TABLE settings ADD COLUMN $it") }
+    }
+}
+
+@Database(entities = [SettingsEntity::class], version = 2, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun settingsDao(): SettingsDao
 
@@ -98,7 +158,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "smart_prayer.db"
-                ).build().also { instance = it }
+                ).addMigrations(MIGRATION_1_2).build().also { instance = it }
             }
     }
 }

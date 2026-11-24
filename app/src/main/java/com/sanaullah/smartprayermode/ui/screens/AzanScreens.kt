@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -26,9 +27,11 @@ import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -63,13 +66,20 @@ fun AzanSelectionScreen(vm: AppViewModel, onBack: () -> Unit, onOpenPlayer: () -
     val selected = AzanSource.fromName(s.azanSource)
     var volume by remember(s.azanVolume) { mutableFloatStateOf(s.azanVolume) }
 
+    var pickFor by remember { mutableStateOf(AzanSource.CUSTOM) }
+    var fajrDialog by remember { mutableStateOf(false) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri != null) {
             runCatching {
                 ctx.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            vm.update { it.copy(customAzanUri = uri.toString(), azanSource = AzanSource.CUSTOM.name) }
+            vm.setAzanFile(pickFor, uri)
         }
+    }
+
+    fun launchPicker(src: AzanSource) {
+        pickFor = src
+        picker.launch(arrayOf("audio/*"))
     }
 
     ScreenScaffold("Azan voice", onBack) {
@@ -84,12 +94,13 @@ fun AzanSelectionScreen(vm: AppViewModel, onBack: () -> Unit, onOpenPlayer: () -
         SectionLabel("Select Azan")
         GoldCard {
             AzanSource.entries.forEach { source ->
-                val available = AzanLibrary.isAvailable(ctx, source, s.customAzanUri)
+                val userUri = s.azanUri(source.name)
+                val available = AzanLibrary.isAvailable(ctx, source, userUri)
                 val playingThis = azan.state == AzanPlayer.State.PLAYING && azan.label == source.label
                 Row(
                     Modifier.fillMaxWidth().clickable {
                         if (source == AzanSource.CUSTOM && s.customAzanUri == null) {
-                            picker.launch(arrayOf("audio/*"))
+                            launchPicker(AzanSource.CUSTOM)
                         } else {
                             vm.update { it.copy(azanSource = source.name) }
                         }
@@ -100,7 +111,7 @@ fun AzanSelectionScreen(vm: AppViewModel, onBack: () -> Unit, onOpenPlayer: () -
                         selected = selected == source,
                         onClick = {
                             if (source == AzanSource.CUSTOM && s.customAzanUri == null) {
-                                picker.launch(arrayOf("audio/*"))
+                                launchPicker(AzanSource.CUSTOM)
                             } else {
                                 vm.update { it.copy(azanSource = source.name) }
                             }
@@ -110,12 +121,31 @@ fun AzanSelectionScreen(vm: AppViewModel, onBack: () -> Unit, onOpenPlayer: () -
                     Column(Modifier.weight(1f)) {
                         Text(source.label, color = Ivory, style = MaterialTheme.typography.titleMedium)
                         Text(
-                            if (available) {
-                                if (source == AzanSource.CUSTOM) "File selected" else "Audio file included"
-                            } else source.note,
+                            if (userUri != null) "Your file added" else if (available) "Audio file included" else source.note,
                             color = if (available) Emerald else Gold.copy(alpha = 0.9f),
                             style = MaterialTheme.typography.bodySmall
                         )
+                        if (source != AzanSource.CUSTOM) {
+                            Row {
+                                TextButton(
+                                    onClick = { launchPicker(source) },
+                                    contentPadding = PaddingValues(horizontal = 4.dp)
+                                ) {
+                                    Text(
+                                        if (userUri == null) "Add my licensed file" else "Replace file",
+                                        color = Gold, style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                                if (userUri != null) {
+                                    TextButton(
+                                        onClick = { vm.setAzanFile(source, null) },
+                                        contentPadding = PaddingValues(horizontal = 4.dp)
+                                    ) {
+                                        Text("Remove", color = Gold.copy(alpha = 0.8f), style = MaterialTheme.typography.bodySmall)
+                                    }
+                                }
+                            }
+                        }
                     }
                     IconButton(
                         onClick = { if (playingThis) vm.stopAzan() else vm.previewAzan(source) },
@@ -132,7 +162,16 @@ fun AzanSelectionScreen(vm: AppViewModel, onBack: () -> Unit, onOpenPlayer: () -
             NavRow(
                 if (s.customAzanUri == null) "Choose custom audio file" else "Change custom audio file",
                 icon = Icons.Filled.MusicNote
-            ) { picker.launch(arrayOf("audio/*")) }
+            ) { launchPicker(AzanSource.CUSTOM) }
+        }
+
+        SectionLabel("Fajr Azan")
+        GoldCard {
+            NavRow(
+                "Azan for Fajr",
+                if (s.fajrAzanSource.isBlank()) "Same as the selected Azan" else AzanSource.fromName(s.fajrAzanSource).label,
+                Icons.Filled.MusicNote
+            ) { fajrDialog = true }
         }
 
         SectionLabel("Volume")
@@ -161,12 +200,22 @@ fun AzanSelectionScreen(vm: AppViewModel, onBack: () -> Unit, onOpenPlayer: () -
         GoldCard {
             Text("Audio licensing", color = Gold, style = MaterialTheme.typography.labelLarge)
             Text(
-                "No Azan recordings are bundled with this app. Add only recordings you are licensed to " +
-                    "use (see assets/azan/README.md and docs/AUDIO_LICENSES.md), or pick your own file as " +
-                    "the Custom Azan. Entries marked “must be supplied” stay disabled until a file is added.",
+                "No Azan recordings are bundled, because I could not verify that any are free to redistribute. " +
+                    "Add your own licensed file to any Azan above (“Add my licensed file”); it is stored " +
+                    "only on this device and is used for that Azan. See docs/AUDIO_LICENSES.md for sources I reviewed.",
                 color = Ivory.copy(alpha = 0.8f), style = MaterialTheme.typography.bodySmall
             )
         }
+    }
+
+    if (fajrDialog) {
+        ChoiceDialog(
+            "Azan for Fajr",
+            listOf("" to "Same as the selected Azan") + AzanSource.entries.map { it.name to it.label },
+            s.fajrAzanSource,
+            { id -> vm.update { it.copy(fajrAzanSource = id) } },
+            { fajrDialog = false }
+        )
     }
 }
 
